@@ -1,5 +1,5 @@
 set(SOURCE_FILES
-  "hello_world.cpp"
+  "PlanarUnwrapAll.cpp"
   )
 
 find_package(Maya REQUIRED)

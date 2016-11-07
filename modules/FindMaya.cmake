@@ -11,7 +11,16 @@
 
 # Set a default Maya version if not specified
 if(NOT DEFINED MAYA_VERSION)
-    set(MAYA_VERSION 2015 CACHE STRING "Maya version")
+    set(MAYA_VERSION 2017 CACHE STRING "Maya version")
+endif()
+
+if(MAYA_VERSION LESS 2015)
+  MESSAGE(WARNING "Unsupported Maya Version")
+  set(MAYA_QT_VERSION "UNKNOWN")
+elseif(MAYA_VERSION EQUAL 2017)
+  set(MAYA_QT_VERSION "5.6.1")
+elseif(MAYA_VERSION EQUAL 2015)
+  set(MAYA_QT_VERSION "4.8.5")
 endif()
 
 # OS Specific environment setup
@@ -21,6 +30,10 @@ set(MAYA_INC_SUFFIX "include")
 set(MAYA_LIB_SUFFIX "lib")
 set(MAYA_BIN_SUFFIX "bin")
 set(MAYA_TARGET_TYPE LIBRARY)
+
+set(MAYA_QT_PREFIX "qt-")
+set(MAYA_QT_SUFFIX "-include")
+
 if(WIN32)
     # Windows
     set(MAYA_INSTALL_BASE_DEFAULT "C:/Program Files/Autodesk")
@@ -74,6 +87,17 @@ find_path(MAYA_INCLUDE_DIR maya/MFn.h
     DOC "Maya include path"
 )
 
+# Qt include directory
+set(MAYA_QT_FOLDER_NAME ${MAYA_QT_PREFIX}${MAYA_QT_VERSION}${MAYA_QT_SUFFIX})
+find_path(MAYA_QT_INCLUDE_DIR /qtcore/qtcore
+  PATHS
+    ${MAYA_LOCATION}
+    $ENV{MAYA_LOCATION}
+  PATH_SUFFIXES
+    "${MAYA_INC_SUFFIX}/${MAYA_QT_FOLDER_NAME}"
+  DOC "Maya QT include path"
+)
+
 # Maya libraries
 set(_MAYA_LIBRARIES OpenMaya OpenMayaAnim OpenMayaFX OpenMayaRender OpenMayaUI Foundation clew)
 foreach(MAYA_LIB ${_MAYA_LIBRARIES})
@@ -84,6 +108,17 @@ foreach(MAYA_LIB ${_MAYA_LIBRARIES})
     endif()
 endforeach()
 
+# QT Libraries
+FILE(GLOB _QT_LIBRARIES "${MAYA_LIBRARY_DIR}/Qt*.lib")
+foreach(QT_LIB ${_QT_LIBRARIES})
+    get_filename_component(QT_CURR_LIB ${QT_LIB} NAME_WE)
+    find_library(MAYA_QT_${QT_LIB}_LIBRARY NAMES ${QT_CURR_LIB} PATHS ${MAYA_LIBRARY_DIR}
+        NO_DEFAULT_PATH)
+    if (MAYA_QT_${QT_LIB}_LIBRARY)
+        set(MAYA_QT_LIBRARIES ${MAYA_QT_LIBRARIES} ${MAYA_QT_${QT_LIB}_LIBRARY})
+    endif()
+endforeach()
+
 if (APPLE AND ${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     # Clang and Maya needs to use libstdc++
     set(MAYA_CXX_FLAGS "-std=c++0x -stdlib=libstdc++")
@@ -91,6 +126,7 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Maya DEFAULT_MSG MAYA_INCLUDE_DIR MAYA_LIBRARIES)
+find_package_handle_standard_args(Maya_QT DEFAULT_MSG MAYA_QT_INCLUDE_DIR MAYA_QT_LIBRARIES)
 
 function(MAYA_PLUGIN _target)
     if (WIN32)

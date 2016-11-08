@@ -1,4 +1,5 @@
 set(SOURCE_FILES
+  "PlanarUnwrapAll.h"
   "PlanarUnwrapAll.cpp"
   )
 
